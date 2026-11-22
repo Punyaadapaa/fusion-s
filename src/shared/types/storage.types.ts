@@ -1,4 +1,5 @@
-import { ActiveSessions, SessionData } from "./session.types";
+import { EncryptionSettings } from "@shared/types/crypto.types";
+import { ActiveSessions, SessionData, SessionTTL, EncryptedSessionData } from "./session.types";
 
 export interface StorageData {
   localStorage: Record<string, string>;
@@ -6,6 +7,8 @@ export interface StorageData {
 }
 
 export interface ExtensionStorage {
-  sessions: SessionData[];
+  sessions: (SessionData | EncryptedSessionData)[];
   activeSessions: ActiveSessions;
+  ttlSettings: SessionTTL;
+  encryptionSettings: EncryptionSettings;
 }

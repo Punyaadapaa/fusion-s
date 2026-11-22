@@ -22,7 +22,30 @@ export interface ClearSessionMessage extends BaseMessage {
   tabId: number;
 }
 
-export type MessageType = GetCurrentSessionMessage | SwitchSessionMessage | ClearSessionMessage;
+export interface SetTTLSettingsMessage extends BaseMessage {
+  action: "setTTLSettings";
+  settings: SessionTTL;
+}
+
+export interface UnlockEncryptionMessage extends BaseMessage {
+  action: "unlockEncryption";
+  password: string;
+}
+
+export interface LockEncryptionMessage extends BaseMessage {
+  action: "lockEncryption";
+}
+
+export interface SetEncryptionSettingsMessage extends BaseMessage {
+  action: "setEncryptionSettings";
+  settings: EncryptionSettings;
+}
+
+export interface GetEncryptionSettingsMessage extends BaseMessage {
+  action: "getEncryptionSettings";
+}
+
+export type MessageType = GetCurrentSessionMessage | SwitchSessionMessage | ClearSessionMessage | SetTTLSettingsMessage | UnlockEncryptionMessage | LockEncryptionMessage | SetEncryptionSettingsMessage | GetEncryptionSettingsMessage;
 
 export interface MessageResponse<T = undefined> {
   success: boolean;

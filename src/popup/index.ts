@@ -91,43 +91,43 @@ class KeyboardShortcuts {
     description: string;
     keys: Array<{ key: string; isMod: boolean }>;
   }> = [
-    {
-      action: "Save Session",
-      description: "Save current login session",
-      keys: [
-        { key: "Ctrl", isMod: true },
-        { key: "Shift", isMod: true },
-        { key: "S", isMod: false },
-      ],
-    },
-    {
-      action: "New Session",
-      description: "Clear session and start fresh",
-      keys: [
-        { key: "Ctrl", isMod: true },
-        { key: "Shift", isMod: true },
-        { key: "N", isMod: false },
-      ],
-    },
-    {
-      action: "Next Session",
-      description: "Cycle to next session",
-      keys: [
-        { key: "Ctrl", isMod: true },
-        { key: "Shift", isMod: true },
-        { key: "→", isMod: false },
-      ],
-    },
-    {
-      action: "Previous Session",
-      description: "Cycle to previous session",
-      keys: [
-        { key: "Ctrl", isMod: true },
-        { key: "Shift", isMod: true },
-        { key: "←", isMod: false },
-      ],
-    },
-  ];
+      {
+        action: "Save Session",
+        description: "Save current login session",
+        keys: [
+          { key: "Ctrl", isMod: true },
+          { key: "Shift", isMod: true },
+          { key: "S", isMod: false },
+        ],
+      },
+      {
+        action: "New Session",
+        description: "Clear session and start fresh",
+        keys: [
+          { key: "Ctrl", isMod: true },
+          { key: "Shift", isMod: true },
+          { key: "N", isMod: false },
+        ],
+      },
+      {
+        action: "Next Session",
+        description: "Cycle to next session",
+        keys: [
+          { key: "Ctrl", isMod: true },
+          { key: "Shift", isMod: true },
+          { key: "→", isMod: false },
+        ],
+      },
+      {
+        action: "Previous Session",
+        description: "Cycle to previous session",
+        keys: [
+          { key: "Ctrl", isMod: true },
+          { key: "Shift", isMod: true },
+          { key: "←", isMod: false },
+        ],
+      },
+    ];
 
   renderList(container: HTMLElement): void {
     container.innerHTML = this.shortcuts
@@ -140,12 +140,12 @@ class KeyboardShortcuts {
         </div>
         <div class="shortcut-keys">
           ${shortcut.keys
-            .map(
-              (k) => `
+    .map(
+      (k) => `
             <span class="keycap ${k.isMod ? "mod" : "kbd"}">${k.key}</span>
           `
-            )
-            .join("")}
+    )
+    .join("")}
         </div>
       </div>
     `
@@ -601,7 +601,7 @@ class PopupController {
         throw new Error("Invalid file format: missing sessions array");
       }
 
-      const mode = (document.querySelector('input[name="importMode"]:checked') as HTMLInputElement)?.value || "merge";
+      const mode = (document.querySelector("input[name=\"importMode\"]:checked") as HTMLInputElement)?.value || "merge";
 
       await this.loadingManager.withLoading(async () => {
         await this.popupService.importSessions(data.sessions, mode);

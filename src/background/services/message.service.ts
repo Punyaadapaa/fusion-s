@@ -3,9 +3,11 @@ import { MESSAGE_ACTIONS } from "@shared/constants/messages";
 import { REQUIRED_PERMISSIONS } from "@shared/constants/requiredPermission";
 import { MessageType, SendResponseType, StoredSession } from "@shared/types";
 import { handleError } from "@shared/utils/errorHandling";
+import { CryptoService } from "./crypto.service";
 
 export class MessageService {
   private sessionHandler = new SessionHandler();
+  private cryptoService = new CryptoService();
 
   handleMessage(message: MessageType, sender: chrome.runtime.MessageSender, sendResponse: SendResponseType): boolean {
     if (!this.validateSender(sender)) {
@@ -78,6 +80,22 @@ export class MessageService {
         await this.handleClearSession(message, sendResponse);
         break;
 
+      case MESSAGE_ACTIONS.UNLOCK_ENCRYPTION:
+        await this.handleUnlockEncryption(message, sendResponse);
+        break;
+
+      case MESSAGE_ACTIONS.LOCK_ENCRYPTION:
+        await this.handleLockEncryption(message, sendResponse);
+        break;
+
+      case MESSAGE_ACTIONS.SET_ENCRYPTION_SETTINGS:
+        await this.handleSetEncryptionSettings(message, sendResponse);
+        break;
+
+      case MESSAGE_ACTIONS.GET_ENCRYPTION_SETTINGS:
+        await this.handleGetEncryptionSettings(message, sendResponse);
+        break;
+
       default:
         sendResponse({ success: false, error: "Unknown action" });
     }
@@ -105,5 +123,57 @@ export class MessageService {
   ): Promise<void> {
     await this.sessionHandler.clearSession(message.domain, message.tabId);
     sendResponse({ success: true });
+  }
+
+  private async handleUnlockEncryption(
+    message: Extract<MessageType, { action: "unlockEncryption" }>,
+    sendResponse: SendResponseType
+  ): Promise<void> {
+    try {
+      await this.cryptoService.unlock(message.password);
+      sendResponse({ success: true });
+    } catch (error) {
+      const errorMessage = handleError(error, "MessageService.handleUnlockEncryption");
+      sendResponse({ success: false, error: errorMessage });
+    }
+  }
+
+  private async handleLockEncryption(
+    _: Extract<MessageType, { action: "lockEncryption" }>,
+    sendResponse: SendResponseType
+  ): Promise<void> {
+    try {
+      await this.cryptoService.lock();
+      sendResponse({ success: true });
+    } catch (error) {
+      const errorMessage = handleError(error, "MessageService.handleLockEncryption");
+      sendResponse({ success: false, error: errorMessage });
+    }
+  }
+
+  private async handleSetEncryptionSettings(
+    message: Extract<MessageType, { action: "setEncryptionSettings" }>,
+    sendResponse: SendResponseType
+  ): Promise<void> {
+    try {
+      await this.cryptoService.setEncryptionSettings(message.settings);
+      sendResponse({ success: true });
+    } catch (error) {
+      const errorMessage = handleError(error, "MessageService.handleSetEncryptionSettings");
+      sendResponse({ success: false, error: errorMessage });
+    }
+  }
+
+  private async handleGetEncryptionSettings(
+    _: Extract<MessageType, { action: "getEncryptionSettings" }>,
+    sendResponse: SendResponseType
+  ): Promise<void> {
+    try {
+      const settings = await this.cryptoService.getEncryptionSettings();
+      sendResponse({ success: true, data: settings });
+    } catch (error) {
+      const errorMessage = handleError(error, "MessageService.handleGetEncryptionSettings");
+      sendResponse({ success: false, error: errorMessage });
+    }
   }
 }
