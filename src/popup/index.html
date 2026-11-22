@@ -9,109 +9,351 @@
   <body>
     <div class="container">
       <header class="header">
-        <h1 class="title">
-          Session Switcher <a class="byline" href="https://github.com/fanesz/session-switcher">by Fanesz</a>
-          <span class="info-icon">
-            i
-            <div class="info-tooltip">
-              <h4>How to use Session Switcher:</h4>
-              <p><strong>1.</strong> Login to your first account</p>
-              <p><strong>2.</strong> Press "Save Current Session"</p>
-              <p><strong>3.</strong> Press "New Session"</p>
-              <p><strong>4.</strong> Login to your other account</p>
-              <p><strong>5.</strong> Press "Save Current Session"</p>
-              <p><strong>6.</strong> Now you can easily switch between saved sessions!</p>
-            </div>
-          </span>
-        </h1>
-        <div class="current-site" id="currentSite">Loading...</div>
+        <div class="header-inner">
+          <div class="header-top">
+            <h1 class="title">
+              Session Switcher
+              <span class="title-accent">fusion-s</span>
+            </h1>
+            <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menuDropdown">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="domain-row">
+            <span class="domain-prompt" aria-hidden="true">$</span>
+            <span class="domain-value" id="currentSite">Loading…</span>
+          </div>
+        </div>
+
+        <!-- Menu Dropdown -->
+        <div class="menu-dropdown" id="menuDropdown" role="menu">
+          <button class="dropdown-item" id="themeMenuItem" role="menuitem">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            Theme
+          </button>
+          <button class="dropdown-item" id="shortcutsMenuItem" role="menuitem">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01"></path>
+            </svg>
+            Keyboard Shortcuts
+          </button>
+          <div class="dropdown-divider" role="separator"></div>
+          <button class="dropdown-item" id="exportMenuItem" role="menuitem">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Export Sessions
+          </button>
+          <button class="dropdown-item" id="importMenuItem" role="menuitem">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 8 12 3 17 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import Sessions
+          </button>
+          <div class="dropdown-divider" role="separator"></div>
+          <button class="dropdown-item" id="helpMenuItem" role="menuitem">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            Help
+          </button>
+        </div>
       </header>
 
       <main class="content">
-        <div class="actions-top">
-          <button id="saveBtn" class="btn btn-primary">
-            <span class="btn-icon">💾</span>
-            Save Current Session
+        <div class="toolbar">
+          <button id="saveBtn" class="toolbar-btn primary" aria-label="Save current session">
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Save Session
           </button>
-          <button id="newSessionBtn" class="btn btn-secondary">
-            <span class="btn-icon">🆕</span>
+          <button id="newSessionBtn" class="toolbar-btn" aria-label="Create new session">
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
             New Session
           </button>
         </div>
 
-        <div class="sessions-section">
-          <h3 class="section-title">Saved Sessions</h3>
-          <div id="sessionsList" class="sessions-list">
-            <div class="no-sessions">No sessions saved for this site</div>
+        <section class="sessions-section" aria-label="Saved sessions">
+          <header class="sessions-header">
+            <h2 class="section-title">Saved Sessions</h2>
+            <span class="session-count" id="sessionCount" aria-live="polite">0</span>
+          </header>
+          <div id="sessionsList" class="sessions-list" role="list">
+            <div class="no-sessions" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <span class="no-sessions-text">No sessions saved for this site</span>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     </div>
 
     <!-- Modals -->
-    <div id="saveModal" class="modal">
+    <div id="saveModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle">
       <div class="modal-content">
-        <div class="modal-header">
-          <h3>Save Session</h3>
-          <button id="closeSaveModal" class="close-btn">&times;</button>
-        </div>
+        <header class="modal-header">
+          <h3 id="saveModalTitle">Save Session</h3>
+          <button class="modal-close" id="closeSaveModal" aria-label="Close">&times;</button>
+        </header>
         <div class="modal-body">
-          <label for="sessionName">Session Name:</label>
-          <input type="text" id="sessionName" placeholder="Enter session name" value="Unnamed Session" />
+          <label class="modal-label" for="sessionName">Session name</label>
+          <input
+            type="text"
+            class="modal-input"
+            id="sessionName"
+            placeholder="Enter session name"
+            value="Unnamed Session"
+            autocomplete="off"
+          />
         </div>
-        <div class="modal-footer">
-          <button id="cancelSave" class="btn btn-secondary">Cancel</button>
-          <button id="confirmSave" class="btn btn-primary">Save</button>
-        </div>
+        <footer class="modal-footer">
+          <button id="cancelSave" class="toolbar-btn">Cancel</button>
+          <button id="confirmSave" class="toolbar-btn primary">Save</button>
+        </footer>
       </div>
     </div>
 
-    <div id="renameModal" class="modal">
+    <div id="renameModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="renameModalTitle">
       <div class="modal-content">
-        <div class="modal-header">
-          <h3>Rename Session</h3>
-          <button id="closeRenameModal" class="close-btn">&times;</button>
-        </div>
+        <header class="modal-header">
+          <h3 id="renameModalTitle">Rename Session</h3>
+          <button class="modal-close" id="closeRenameModal" aria-label="Close">&times;</button>
+        </header>
         <div class="modal-body">
-          <label for="newSessionName">New Name:</label>
-          <input type="text" id="newSessionName" placeholder="Enter new name" />
+          <label class="modal-label" for="newSessionName">New name</label>
+          <input type="text" class="modal-input" id="newSessionName" placeholder="Enter new name" autocomplete="off" />
         </div>
-        <div class="modal-footer">
-          <button id="cancelRename" class="btn btn-secondary">Cancel</button>
-          <button id="confirmRename" class="btn btn-primary">Rename</button>
-        </div>
+        <footer class="modal-footer">
+          <button id="cancelRename" class="toolbar-btn">Cancel</button>
+          <button id="confirmRename" class="toolbar-btn primary">Rename</button>
+        </footer>
       </div>
     </div>
 
-    <div id="deleteModal" class="modal">
+    <div id="deleteModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
       <div class="modal-content">
-        <div class="modal-header">
-          <h3>Delete Session</h3>
-          <button id="closeDeleteModal" class="close-btn">&times;</button>
-        </div>
+        <header class="modal-header">
+          <h3 id="deleteModalTitle">Delete Session</h3>
+          <button class="modal-close" id="closeDeleteModal" aria-label="Close">&times;</button>
+        </header>
         <div class="modal-body">
-          <p>Are you sure you want to delete the session "<strong id="deleteSessionName"></strong>"?</p>
-          <p class="warning-text">This action cannot be undone.</p>
+          <p style="font-size: 0.846rem; color: var(--fg-0)">
+            Delete session <strong id="deleteSessionName"></strong>?
+          </p>
+          <p style="font-size: 0.769rem; color: var(--fg-1); margin-top: var(--space-2)">
+            This action cannot be undone.
+          </p>
         </div>
-        <div class="modal-footer">
-          <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
-          <button id="confirmDelete" class="btn btn-danger">Delete</button>
-        </div>
+        <footer class="modal-footer">
+          <button id="cancelDelete" class="toolbar-btn">Cancel</button>
+          <button id="confirmDelete" class="toolbar-btn danger">Delete</button>
+        </footer>
       </div>
     </div>
 
-    <div id="errorModal" class="modal">
+    <div id="errorModal" class="modal" role="alertdialog" aria-modal="true" aria-labelledby="errorModalTitle">
       <div class="modal-content">
-        <div class="modal-header">
-          <h3>Error</h3>
-          <button id="closeErrorModal" class="close-btn">&times;</button>
-        </div>
+        <header class="modal-header">
+          <h3 id="errorModalTitle">Error</h3>
+          <button class="modal-close" id="closeErrorModal" aria-label="Close">&times;</button>
+        </header>
         <div class="modal-body">
-          <p id="errorMessage">An unexpected error occurred.</p>
+          <p id="errorMessage" style="font-size: 0.846rem; color: var(--fg-0)">An unexpected error occurred.</p>
         </div>
-        <div class="modal-footer">
-          <button id="closeErrorModalBtn" class="btn btn-primary">Close</button>
+        <footer class="modal-footer">
+          <button id="closeErrorModalBtn" class="toolbar-btn primary">Close</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Theme Customizer Modal -->
+    <div id="themeModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="themeModalTitle">Theme</h3>
+          <button class="modal-close" id="closeThemeModal" aria-label="Close">&times;</button>
+        </header>
+        <div class="modal-body">
+          <div class="theme-options" id="themeOptions" role="radiogroup" aria-label="Select theme">
+            <!-- Rendered by JS -->
+          </div>
         </div>
+        <footer class="modal-footer">
+          <button id="closeThemeModalBtn" class="toolbar-btn primary">Done</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcutsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="shortcutsModalTitle">Keyboard Shortcuts</h3>
+          <button class="modal-close" id="closeShortcutsModal" aria-label="Close">&times;</button>
+        </header>
+        <div class="modal-body">
+          <div class="shortcuts-list" id="shortcutsList" role="list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <button id="closeShortcutsModalBtn" class="toolbar-btn primary">Close</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="helpModalTitle">How to Use</h3>
+          <button class="modal-close" id="closeHelpModal" aria-label="Close">&times;</button>
+        </header>
+        <div class="modal-body help-body">
+          <p><strong>1.</strong> Log in to your first account on any website</p>
+          <p><strong>2.</strong> Click <kbd>Save Session</kbd> to store the login</p>
+          <p><strong>3.</strong> Log out, then log in to another account</p>
+          <p><strong>4.</strong> Click <kbd>Save Session</kbd> again</p>
+          <p><strong>5.</strong> Switch between sessions anytime</p>
+          <div class="help-divider"></div>
+          <p><strong>Global Shortcuts</strong></p>
+          <ul>
+            <li>
+              <kbd class="keycap mod">Ctrl</kbd><kbd class="keycap mod">Shift</kbd><kbd class="keycap kbd">S</kbd> Save
+              Session
+            </li>
+            <li>
+              <kbd class="keycap mod">Ctrl</kbd><kbd class="keycap mod">Shift</kbd><kbd class="keycap kbd">N</kbd> New
+              Session
+            </li>
+            <li>
+              <kbd class="keycap mod">Ctrl</kbd><kbd class="keycap mod">Shift</kbd><kbd class="keycap kbd">→</kbd> Next
+              Session
+            </li>
+            <li>
+              <kbd class="keycap mod">Ctrl</kbd><kbd class="keycap mod">Shift</kbd
+              ><kbd class="keycap kbd">←</kbd> Previous Session
+            </li>
+          </ul>
+        </div>
+        <footer class="modal-footer">
+          <button id="closeHelpModalBtn" class="toolbar-btn primary">Got it</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Import Sessions Modal -->
+    <div id="importModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="importModalTitle">Import Sessions</h3>
+          <button class="modal-close" id="closeImportModal" aria-label="Close">&times;</button>
+        </header>
+        <div class="modal-body">
+          <label class="modal-label" for="importFile">Select JSON file</label>
+          <input type="file" class="modal-input" id="importFile" accept=".json" aria-describedby="importHint" />
+          <p id="importHint" style="font-size: 0.692rem; color: var(--fg-2); margin-top: var(--space-1)">
+            Exported from Session Switcher Fusion-s
+          </p>
+
+          <fieldset
+            style="
+              margin-top: var(--space-3);
+              border: 1px solid var(--border-1);
+              border-radius: var(--radius-card);
+              padding: var(--space-3);
+            "
+          >
+            <legend style="font-size: 0.769rem; font-weight: 500; color: var(--fg-1); margin-bottom: var(--space-2)">
+              Import mode
+            </legend>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+                cursor: pointer;
+                padding: var(--space-2);
+                border-radius: var(--radius-control);
+                transition: var(--trans-surface);
+              "
+              onmouseover="this.style.background='var(--bg-2)'"
+              onmouseout="this.style.background='transparent'"
+            >
+              <input type="radio" name="importMode" value="merge" checked style="accent-color: var(--accent)" />
+              <span style="font-size: 0.846rem; color: var(--fg-0)">Merge</span>
+              <span style="font-size: 0.692rem; color: var(--fg-2); margin-left: auto"
+                >Skip duplicates by name + domain</span
+              >
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+                cursor: pointer;
+                padding: var(--space-2);
+                border-radius: var(--radius-control);
+                transition: var(--trans-surface);
+              "
+              onmouseover="this.style.background='var(--bg-2)'"
+              onmouseout="this.style.background='transparent'"
+            >
+              <input type="radio" name="importMode" value="replace" style="accent-color: var(--accent)" />
+              <span style="font-size: 0.846rem; color: var(--fg-0)">Replace all</span>
+              <span style="font-size: 0.692rem; color: var(--fg-2); margin-left: auto"
+                >Remove existing sessions first</span
+              >
+            </label>
+          </fieldset>
+        </div>
+        <footer class="modal-footer">
+          <button id="cancelImport" class="toolbar-btn">Cancel</button>
+          <button id="confirmImport" class="toolbar-btn primary" disabled>Import</button>
+        </footer>
       </div>
     </div>
 
