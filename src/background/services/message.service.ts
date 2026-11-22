@@ -7,7 +7,12 @@ import { handleError } from "@shared/utils/errorHandling";
 export class MessageService {
   private sessionHandler = new SessionHandler();
 
-  handleMessage(message: MessageType, _: chrome.runtime.MessageSender, sendResponse: SendResponseType): boolean {
+  handleMessage(message: MessageType, sender: chrome.runtime.MessageSender, sendResponse: SendResponseType): boolean {
+    if (!this.validateSender(sender)) {
+      sendResponse({ success: false, error: "Invalid message sender" });
+      return true;
+    }
+
     this.checkPermissions()
       .then(() => {
         return this.processMessage(message, sendResponse);
@@ -18,6 +23,10 @@ export class MessageService {
       });
 
     return true;
+  }
+
+  private validateSender(sender: chrome.runtime.MessageSender): boolean {
+    return sender.id === chrome.runtime.id;
   }
 
   private async checkPermissions(): Promise<void> {

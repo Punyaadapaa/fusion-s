@@ -7,7 +7,20 @@ export class SessionHandler {
   private cookieHandler = new CookieHandler();
   private storageHandler = new StorageHandler();
 
+  private async validateTab(tabId: number): Promise<chrome.tabs.Tab> {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      if (!tab.url || !tab.url.startsWith("http")) {
+        throw new ExtensionError("Invalid tab: not an HTTP/HTTPS page");
+      }
+      return tab;
+    } catch (error) {
+      throw new ExtensionError(`Tab validation failed: ${error}`);
+    }
+  }
+
   async getCurrentSession(domain: string, tabId: number): Promise<StoredSession> {
+    await this.validateTab(tabId);
     try {
       const [cookies, storageData] = await Promise.all([
         this.cookieHandler.getCookiesForDomain(domain),
@@ -25,6 +38,7 @@ export class SessionHandler {
   }
 
   async switchToSession(sessionData: SessionData, tabId: number): Promise<void> {
+    await this.validateTab(tabId);
     const { domain, cookies, localStorage, sessionStorage } = sessionData;
 
     try {
@@ -45,6 +59,7 @@ export class SessionHandler {
   }
 
   async clearSession(domain: string, tabId: number): Promise<void> {
+    await this.validateTab(tabId);
     try {
       await Promise.all([
         this.cookieHandler.clearCookiesForDomain(domain),
