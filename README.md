@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="src/popup/assets/icon-128.png" width="160" height="160" alt="Session Switcher Fusion-s">
-</p>
-
 <h1 align="center">fusion-s</h1>
 
 <p align="center"><b>Session management extension with theme customizer and keyboard shortcuts</b><br>
