@@ -2,14 +2,17 @@ import { storedSessionDefaultValue } from "@popup/utils/defaultValue";
 import { MESSAGE_ACTIONS } from "@shared/constants/messages";
 import { STORAGE_KEYS } from "@shared/constants/storageKeys";
 import { ExtensionStorage, PopupState, SessionData, StoredSession } from "@shared/types";
+import { Debouncer } from "@shared/utils/debounce";
 import { getDomainFromUrl } from "@shared/utils/domain";
 import { ExtensionError, handleError } from "@shared/utils/errorHandling";
 import { generateId } from "@shared/utils/idGenerator";
+import { safeValidateImportData } from "@shared/utils/importValidation";
 import { validateSessionName } from "@shared/utils/validation";
 import { ChromeApiService } from "./chromeApi.service";
 
 export class PopupService {
   private chromeApi = new ChromeApiService();
+  private debouncer = new Debouncer();
   private state: PopupState = {
     currentDomain: "",
     currentTab: {} as chrome.tabs.Tab,
@@ -36,68 +39,80 @@ export class PopupService {
   }
 
   async saveCurrentSession(name: string): Promise<SessionData> {
-    try {
-      const validatedName = validateSessionName(name);
+    return this.debouncer.debounceAsync(
+      `save-${this.state.currentDomain}`,
+      async () => {
+        try {
+          const validatedName = validateSessionName(name);
 
-      const response = await this.chromeApi.sendMessage<StoredSession | null>({
-        action: MESSAGE_ACTIONS.GET_CURRENT_SESSION,
-        domain: this.state.currentDomain,
-        tabId: this.state.currentTab.id!,
-      });
+          const response = await this.chromeApi.sendMessage<StoredSession | null>({
+            action: MESSAGE_ACTIONS.GET_CURRENT_SESSION,
+            domain: this.state.currentDomain,
+            tabId: this.state.currentTab.id!,
+          });
 
-      if (!response.success) {
-        throw new ExtensionError(response.error || "Failed to get current session");
-      }
+          if (!response.success) {
+            throw new ExtensionError(response.error || "Failed to get current session");
+          }
 
-      const storedSession = response.data ?? storedSessionDefaultValue;
+          const storedSession = response.data ?? storedSessionDefaultValue;
 
-      const domainSessions = this.state.sessions.filter((s) => s.domain === this.state.currentDomain);
-      const maxOrder = domainSessions.length > 0 ? Math.max(...domainSessions.map((s) => s.order ?? 0)) : -1;
+          const domainSessions = this.state.sessions.filter((s) => s.domain === this.state.currentDomain);
+          const maxOrder = domainSessions.length > 0 ? Math.max(...domainSessions.map((s) => s.order ?? 0)) : -1;
 
-      const newSession: SessionData = {
-        ...storedSession,
-        id: generateId(),
-        name: validatedName,
-        domain: this.state.currentDomain,
-        createdAt: Date.now(),
-        lastUsed: Date.now(),
-        order: maxOrder + 1,
-      };
+          const newSession: SessionData = {
+            ...storedSession,
+            id: generateId(),
+            name: validatedName,
+            domain: this.state.currentDomain,
+            createdAt: Date.now(),
+            lastUsed: Date.now(),
+            order: maxOrder + 1,
+          };
 
-      this.state.sessions.push(newSession);
-      this.state.activeSessions[this.state.currentDomain] = newSession.id;
-      await this.saveStorageData();
+          this.state.sessions.push(newSession);
+          this.state.activeSessions[this.state.currentDomain] = newSession.id;
+          await this.saveStorageData();
 
-      return newSession;
-    } catch (error) {
-      throw new ExtensionError(handleError(error, "PopupService.saveCurrentSession"));
-    }
+          return newSession;
+        } catch (error) {
+          throw new ExtensionError(handleError(error, "PopupService.saveCurrentSession"));
+        }
+      },
+      200
+    ) as Promise<SessionData>;
   }
 
   async switchToSession(sessionId: string): Promise<void> {
-    try {
-      const session = this.state.sessions.find((s) => s.id === sessionId);
-      if (!session) {
-        throw new ExtensionError("Session not found");
-      }
+    return this.debouncer.debounceAsync(
+      `switch-${sessionId}`,
+      async () => {
+        try {
+          const session = this.state.sessions.find((s) => s.id === sessionId);
+          if (!session) {
+            throw new ExtensionError("Session not found");
+          }
 
-      const response = await this.chromeApi.sendMessage({
-        action: MESSAGE_ACTIONS.SWITCH_SESSION,
-        sessionData: session,
-        tabId: this.state.currentTab.id!,
-      });
+          const response = await this.chromeApi.sendMessage({
+            action: MESSAGE_ACTIONS.SWITCH_SESSION,
+            sessionData: session,
+            tabId: this.state.currentTab.id!,
+          });
 
-      if (!response.success) {
-        throw new ExtensionError(response.error || "Failed to switch session");
-      }
+          if (!response.success) {
+            throw new ExtensionError(response.error || "Failed to switch session");
+          }
 
-      this.state.activeSessions[this.state.currentDomain] = sessionId;
-      session.lastUsed = Date.now();
+          this.state.activeSessions[this.state.currentDomain] = sessionId;
+          session.lastUsed = Date.now();
 
-      await this.saveStorageData();
-    } catch (error) {
-      throw new ExtensionError(handleError(error, "PopupService.switchToSession"));
-    }
+          await this.saveStorageData();
+        } catch (error) {
+          throw new ExtensionError(handleError(error, "PopupService.switchToSession"));
+        }
+      },
+      200
+    ) as Promise<void>;
   }
 
   async createNewSession(): Promise<void> {
@@ -151,15 +166,16 @@ export class PopupService {
     try {
       const domainSessions = this.state.sessions.filter((s) => s.domain === this.state.currentDomain);
 
-      if (sessionIds.length !== domainSessions.length) {
-        throw new ExtensionError("Session count mismatch during reorder operation");
-      }
-
       const sessionIdsSet = new Set(sessionIds);
       const allSessionsPresent = domainSessions.every((session) => sessionIdsSet.has(session.id));
 
       if (!allSessionsPresent) {
         throw new ExtensionError("Invalid session IDs provided for reorder operation");
+      }
+
+      // Ensure all provided session IDs belong to current domain sessions
+      if (sessionIds.length !== domainSessions.length) {
+        throw new ExtensionError("Session count mismatch during reorder operation");
       }
 
       sessionIds.forEach((id, index) => {
@@ -236,5 +252,48 @@ export class PopupService {
       [STORAGE_KEYS.SESSIONS]: this.state.sessions,
       [STORAGE_KEYS.ACTIVE_SESSIONS]: this.state.activeSessions,
     });
+  }
+
+  async importSessions(sessions: SessionData[], mode: "merge" | "replace"): Promise<void> {
+    try {
+      const validation = safeValidateImportData({ version: "1.0", exportedAt: new Date().toISOString(), sessions });
+      if (!validation.success) {
+        throw new ExtensionError(`Import validation failed: ${validation.error}`);
+      }
+      const validatedSessions = validation.data.sessions;
+
+      if (mode === "replace") {
+        this.state.sessions = validatedSessions;
+        this.state.activeSessions = {};
+      } else {
+        // Merge mode: skip duplicates by name + domain
+        const existingKeys = new Set(this.state.sessions.map((s) => `${s.name}|${s.domain}`));
+
+        const newSessions = validatedSessions.filter((s) => {
+          const key = `${s.name}|${s.domain}`;
+          return !existingKeys.has(key);
+        });
+
+        // Assign new orders for merged sessions
+        const domainMaxOrder = new Map<string, number>();
+        this.state.sessions.forEach((s) => {
+          const current = domainMaxOrder.get(s.domain) || -1;
+          domainMaxOrder.set(s.domain, Math.max(current, s.order ?? 0));
+        });
+
+        newSessions.forEach((s) => {
+          const current = domainMaxOrder.get(s.domain) || -1;
+          const newOrder = current + 1;
+          s.order = newOrder;
+          domainMaxOrder.set(s.domain, newOrder);
+        });
+
+        this.state.sessions.push(...newSessions);
+      }
+
+      await this.saveStorageData();
+    } catch (error) {
+      throw new ExtensionError(handleError(error, "PopupService.importSessions"));
+    }
   }
 }
