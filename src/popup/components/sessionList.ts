@@ -12,13 +12,13 @@ export class SessionList {
 
   // SVG icons (inline, no emoji)
   private readonly dragIcon =
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><line x1="9" y1="6" x2="15" y2="6"></line><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>';
+    "<svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><line x1=\"9\" y1=\"6\" x2=\"15\" y2=\"6\"></line><line x1=\"9\" y1=\"12\" x2=\"15\" y2=\"12\"></line><line x1=\"9\" y1=\"18\" x2=\"15\" y2=\"18\"></line></svg>";
   private readonly renameIcon =
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5a2.121 2.121 0 0 1 3 3z"></path></svg>';
+    "<svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"></path><path d=\"M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5a2.121 2.121 0 0 1 3 3z\"></path></svg>";
   private readonly deleteIcon =
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+    "<svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><polyline points=\"3 6 5 6 21 6\"></polyline><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"></path></svg>";
   private readonly emptyIcon =
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>';
+    "<svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg>";
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -77,7 +77,7 @@ export class SessionList {
                data-session-id="${escapeHtml(session.id)}"
                draggable="true"
                role="listitem"
-               ${isActive ? 'aria-current="true"' : ""}>
+               ${isActive ? "aria-current=\"true\"" : ""}>
             <button class="drag-handle" aria-label="Drag to reorder" type="button">
               ${this.dragIcon}
             </button>

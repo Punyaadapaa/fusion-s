@@ -1,7 +1,7 @@
 import { storedSessionDefaultValue } from "@popup/utils/defaultValue";
 import { MESSAGE_ACTIONS } from "@shared/constants/messages";
 import { STORAGE_KEYS } from "@shared/constants/storageKeys";
-import { ExtensionStorage, PopupState, SessionData, StoredSession } from "@shared/types";
+import { ExtensionStorage, PopupState, SessionData, StoredSession, SessionTTL, EncryptionSettings } from "@shared/types";
 import { Debouncer } from "@shared/utils/debounce";
 import { getDomainFromUrl } from "@shared/utils/domain";
 import { ExtensionError, handleError } from "@shared/utils/errorHandling";
@@ -208,10 +208,26 @@ export class PopupService {
       const result = await this.chromeApi.getStorageData<ExtensionStorage>([
         STORAGE_KEYS.SESSIONS,
         STORAGE_KEYS.ACTIVE_SESSIONS,
+        STORAGE_KEYS.TTL_SETTINGS,
+        STORAGE_KEYS.ENCRYPTION_SETTINGS,
       ]);
 
       this.state.sessions = result[STORAGE_KEYS.SESSIONS] || [];
       this.state.activeSessions = result[STORAGE_KEYS.ACTIVE_SESSIONS] || {};
+
+      // Load TTL settings
+      const defaultTTL: SessionTTL = {
+        defaultTTL: 7 * 24 * 60 * 60, // 7 days in seconds
+        enabled: false,
+      };
+      this.state.ttlSettings = result[STORAGE_KEYS.TTL_SETTINGS] || defaultTTL;
+
+      // Load encryption settings
+      const defaultEncryption: EncryptionSettings = {
+        enabled: false,
+        keyDerivationIterations: 100000,
+      };
+      this.state.encryptionSettings = result[STORAGE_KEYS.ENCRYPTION_SETTINGS] || defaultEncryption;
 
       const migrationNeeded = await this.migrateLegacySessions();
       if (migrationNeeded) {
@@ -221,6 +237,9 @@ export class PopupService {
       console.error("Error loading storage data:", error);
       this.state.sessions = [];
       this.state.activeSessions = {};
+      // Set default settings
+      this.state.ttlSettings = { defaultTTL: 7 * 24 * 60 * 60, enabled: false };
+      this.state.encryptionSettings = { enabled: false, keyDerivationIterations: 100000 };
     }
   }
 
@@ -251,6 +270,8 @@ export class PopupService {
     await this.chromeApi.setStorageData({
       [STORAGE_KEYS.SESSIONS]: this.state.sessions,
       [STORAGE_KEYS.ACTIVE_SESSIONS]: this.state.activeSessions,
+      [STORAGE_KEYS.TTL_SETTINGS]: this.state.ttlSettings,
+      [STORAGE_KEYS.ENCRYPTION_SETTINGS]: this.state.encryptionSettings,
     });
   }
 
@@ -294,6 +315,57 @@ export class PopupService {
       await this.saveStorageData();
     } catch (error) {
       throw new ExtensionError(handleError(error, "PopupService.importSessions"));
+    }
+  }
+
+  async unlockEncryption(password: string): Promise<void> {
+    try {
+      await this.chromeApi.sendMessage({
+        action: MESSAGE_ACTIONS.UNLOCK_ENCRYPTION,
+        password: password,
+      });
+    } catch (error) {
+      throw new ExtensionError(handleError(error, "PopupService.unlockEncryption"));
+    }
+  }
+
+  async lockEncryption(): Promise<void> {
+    try {
+      await this.chromeApi.sendMessage({
+        action: MESSAGE_ACTIONS.LOCK_ENCRYPTION,
+      });
+    } catch (error) {
+      throw new ExtensionError(handleError(error, "PopupService.lockEncryption"));
+    }
+  }
+
+  async setEncryptionSettings(settings: EncryptionSettings): Promise<void> {
+    try {
+      this.state.encryptionSettings = settings;
+      await this.chromeApi.sendMessage({
+        action: MESSAGE_ACTIONS.SET_ENCRYPTION_SETTINGS,
+        settings: settings,
+      });
+      await this.saveStorageData();
+    } catch (error) {
+      throw new ExtensionError(handleError(error, "PopupService.setEncryptionSettings"));
+    }
+  }
+
+  async getEncryptionSettings(): Promise<EncryptionSettings> {
+    try {
+      const response = await this.chromeApi.sendMessage({
+        action: MESSAGE_ACTIONS.GET_ENCRYPTION_SETTINGS,
+      });
+      if (response.success) {
+        this.state.encryptionSettings = response.data as EncryptionSettings;
+        await this.saveStorageData();
+        return response.data as EncryptionSettings;
+      } else {
+        throw new ExtensionError(response.error || "Failed to get encryption settings");
+      }
+    } catch (error) {
+      throw new ExtensionError(handleError(error, "PopupService.getEncryptionSettings"));
     }
   }
 }
