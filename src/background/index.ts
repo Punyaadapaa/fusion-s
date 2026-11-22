@@ -1,13 +1,16 @@
 import { STORAGE_KEYS } from "@shared/constants/storageKeys";
 import { CryptoService } from "./services/crypto.service";
 import { MessageService } from "./services/message.service";
+import { TTLCleanupService } from "./services/ttlCleanup.service";
 
 const messageService = new MessageService();
 const cryptoService = new CryptoService();
+const ttlCleanupService = new TTLCleanupService();
 
 // Extension startup
 chrome.runtime.onStartup.addListener(async () => {
   console.log("Session Switcher extension started");
+  await ttlCleanupService.initialize();
   await cryptoService.initialize();
 });
 
@@ -21,8 +24,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       [STORAGE_KEYS.ACTIVE_SESSIONS]: {},
     });
   }
-  
-  // Initialize crypto on update too
+
+  // Initialize TTL cleanup and crypto on update too
+  await ttlCleanupService.initialize();
   await cryptoService.initialize();
 });
 

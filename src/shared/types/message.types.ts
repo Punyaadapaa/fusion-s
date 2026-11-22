@@ -1,4 +1,4 @@
-import { SessionData } from "./session.types";
+import { SessionData, SessionTTL, EncryptionSettings } from "./session.types";
 
 export interface BaseMessage {
   action: string;
