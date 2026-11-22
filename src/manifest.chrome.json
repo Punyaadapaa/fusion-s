@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Session management extension with theme customizer and keyboard shortcuts - fusion of fanesz/session-switcher + kuronekony4n/session-switcher2",
 
-  "permissions": ["storage", "tabs", "cookies", "activeTab", "scripting"],
+  "permissions": ["storage", "tabs", "cookies", "activeTab", "scripting", "alarms"],
   "host_permissions": ["<all_urls>"],
   "commands": {
     "save-session": {

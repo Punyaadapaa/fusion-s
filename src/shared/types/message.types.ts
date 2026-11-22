@@ -22,7 +22,12 @@ export interface ClearSessionMessage extends BaseMessage {
   tabId: number;
 }
 
-export type MessageType = GetCurrentSessionMessage | SwitchSessionMessage | ClearSessionMessage;
+export interface SetTTLSettingsMessage extends BaseMessage {
+  action: "setTTLSettings";
+  settings: SessionTTL;
+}
+
+export type MessageType = GetCurrentSessionMessage | SwitchSessionMessage | ClearSessionMessage | SetTTLSettingsMessage;
 
 export interface MessageResponse<T = undefined> {
   success: boolean;

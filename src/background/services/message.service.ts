@@ -78,6 +78,10 @@ export class MessageService {
         await this.handleClearSession(message, sendResponse);
         break;
 
+      case MESSAGE_ACTIONS.SET_TTL_SETTINGS:
+        await this.handleSetTTLSettings(message, sendResponse);
+        break;
+
       default:
         sendResponse({ success: false, error: "Unknown action" });
     }
@@ -97,6 +101,22 @@ export class MessageService {
   ): Promise<void> {
     await this.sessionHandler.switchToSession(message.sessionData, message.tabId);
     sendResponse({ success: true });
+  }
+
+  private async handleSetTTLSettings(
+    message: Extract<MessageType, { action: "setTTLSettings" }>,
+    sendResponse: SendResponseType
+  ): Promise<void> {
+    try {
+      // Import here to avoid circular dependency
+      const { TTLCleanupService } = await import("@background/services/ttlCleanup.service");
+      const ttlCleanupService = new TTLCleanupService();
+      await ttlCleanupService.setTTLSettings(message.settings);
+      sendResponse({ success: true });
+    } catch (error) {
+      const errorMessage = handleError(error, "MessageService.handleSetTTLSettings");
+      sendResponse({ success: false, error: errorMessage });
+    }
   }
 
   private async handleClearSession(

@@ -1,7 +1,7 @@
 import { storedSessionDefaultValue } from "@popup/utils/defaultValue";
 import { MESSAGE_ACTIONS } from "@shared/constants/messages";
 import { STORAGE_KEYS } from "@shared/constants/storageKeys";
-import { ExtensionStorage, PopupState, SessionData, StoredSession } from "@shared/types";
+import { ExtensionStorage, PopupState, SessionData, StoredSession, SessionTTL } from "@shared/types";
 import { Debouncer } from "@shared/utils/debounce";
 import { getDomainFromUrl } from "@shared/utils/domain";
 import { ExtensionError, handleError } from "@shared/utils/errorHandling";
@@ -20,6 +20,7 @@ export class PopupService {
     activeSessions: {},
     currentRenameSessionId: "",
     currentDeleteSessionId: "",
+    ttlSettings: { defaultTTL: 7 * 24 * 60 * 60, enabled: false },
   };
 
   async initialize(): Promise<PopupState> {
@@ -208,10 +209,18 @@ export class PopupService {
       const result = await this.chromeApi.getStorageData<ExtensionStorage>([
         STORAGE_KEYS.SESSIONS,
         STORAGE_KEYS.ACTIVE_SESSIONS,
+        STORAGE_KEYS.TTL_SETTINGS,
       ]);
 
       this.state.sessions = result[STORAGE_KEYS.SESSIONS] || [];
       this.state.activeSessions = result[STORAGE_KEYS.ACTIVE_SESSIONS] || {};
+
+      // Load TTL settings
+      const defaultTTL: SessionTTL = {
+        defaultTTL: 7 * 24 * 60 * 60, // 7 days in seconds
+        enabled: false,
+      };
+      this.state.ttlSettings = result[STORAGE_KEYS.TTL_SETTINGS] || defaultTTL;
 
       const migrationNeeded = await this.migrateLegacySessions();
       if (migrationNeeded) {
@@ -221,6 +230,8 @@ export class PopupService {
       console.error("Error loading storage data:", error);
       this.state.sessions = [];
       this.state.activeSessions = {};
+      // Set default TTL settings
+      this.state.ttlSettings = { defaultTTL: 7 * 24 * 60 * 60, enabled: false };
     }
   }
 
@@ -251,7 +262,43 @@ export class PopupService {
     await this.chromeApi.setStorageData({
       [STORAGE_KEYS.SESSIONS]: this.state.sessions,
       [STORAGE_KEYS.ACTIVE_SESSIONS]: this.state.activeSessions,
+      [STORAGE_KEYS.TTL_SETTINGS]: this.state.ttlSettings,
     });
+  }
+
+  async setTTLSettings(settings: SessionTTL): Promise<void> {
+    try {
+      this.state.ttlSettings = settings;
+      await this.saveStorageData();
+    } catch (error) {
+      throw new ExtensionError(handleError(error, "PopupService.setTTLSettings"));
+    }
+  }
+
+  async cleanupExpiredSessions(): Promise<void> {
+    try {
+      const now = Date.now();
+      const currentTime = Math.floor(now / 1000);
+
+      // Filter out expired sessions
+      const activeSessionIds = new Set(this.state.activeSessions.values());
+      const validSessions = this.state.sessions.filter((session) => {
+        if (!this.state.ttlSettings.enabled || !session.ttl) {
+          return true; // Keep if TTL is disabled or not set
+        }
+
+        const expirationTime = session.createdAt + session.ttl * 1000;
+        return currentTime < expirationTime && activeSessionIds.has(session.id);
+      });
+
+      // Update state and save if changed
+      if (validSessions.length !== this.state.sessions.length) {
+        this.state.sessions = validSessions;
+        await this.saveStorageData();
+      }
+    } catch (error) {
+      console.error("Error cleaning up expired sessions:", error);
+    }
   }
 
   async importSessions(sessions: SessionData[], mode: "merge" | "replace"): Promise<void> {

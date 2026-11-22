@@ -1,4 +1,4 @@
-import { ActiveSessions, SessionData } from "./session.types";
+import { ActiveSessions, SessionData, SessionTTL } from "./session.types";
 
 export interface StorageData {
   localStorage: Record<string, string>;
@@ -8,4 +8,5 @@ export interface StorageData {
 export interface ExtensionStorage {
   sessions: SessionData[];
   activeSessions: ActiveSessions;
+  ttlSettings: SessionTTL;
 }

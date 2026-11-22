@@ -4,4 +4,5 @@ export const REQUIRED_PERMISSIONS: chrome.runtime.ManifestPermissions[] = [
   "cookies",
   "activeTab",
   "scripting",
+  "alarms",
 ];
