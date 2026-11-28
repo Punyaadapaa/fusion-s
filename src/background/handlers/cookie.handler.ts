@@ -1,54 +1,29 @@
-// Shared Google auth cookies log the user into every Google service at once.
-// Clearing or overwriting them (even from a subdomain session) signs the user
-// out of Gemini, Classroom, YouTube, ... so they are never managed here.
-const GOOGLE_AUTH_COOKIE_NAMES = new Set([
-  "SID",
-  "HSID",
-  "SSID",
-  "APISID",
-  "SAPISID",
-  "LSID",
-  "OSID",
-  "SIDCC",
-  "__Secure-1PSID",
-  "__Secure-3PSID",
-  "__Secure-1PAPISID",
-  "__Secure-3PAPISID",
-  "__Secure-1PSIDTS",
-  "__Secure-3PSIDTS",
-  "__Secure-1PSIDCC",
-  "__Secure-3PSIDCC",
-  "__Host-GAPS",
-  "__Host-1PLSID",
-  "__Host-3PLSID",
-  "__Host-APISID",
-  "__Host-SAPISID",
-  "ACCOUNT_CHOOSER",
-  "AEC",
-  "NID",
-  "1P_JAR",
-  "CONSENT",
-  "SOCS",
-]);
+// Google shares one auth cookie set (.google.com) across every service. All
+// Google hosts must therefore use the same cookie scope, otherwise a session
+// saved on Gemini and a switch on Classroom operate on different cookie sets.
+const GOOGLE_REGISTRABLE_DOMAIN = /(?:^|\.)(google\.[a-z]{2,}(?:\.[a-z]{2,})?)$/;
 
 export function isGoogleHost(domain: string): boolean {
-  return /(^|\.)google\.[a-z]{2,}(\.[a-z]{2,})?$/.test(domain);
+  return GOOGLE_REGISTRABLE_DOMAIN.test(domain);
 }
 
-export function shouldManageCookie(cookieDomain: string, cookieName: string, currentDomain: string): boolean {
-  const sliced = cookieDomain.startsWith(".") ? cookieDomain.slice(1) : cookieDomain;
-  const isExact = sliced === currentDomain || sliced === `www.${currentDomain}`;
-  const isSubdomain = sliced.endsWith(`.${currentDomain}`);
+export function getCookieScope(domain: string): string {
+  const host = domain.split(":")[0];
+  const match = host.match(GOOGLE_REGISTRABLE_DOMAIN);
+  return match ? match[1] : host;
+}
 
-  if (isGoogleHost(currentDomain)) {
-    if (GOOGLE_AUTH_COOKIE_NAMES.has(cookieName)) {
-      return false;
-    }
-    // Only this exact host - never the shared parent (.google.com) or sibling services.
-    return isExact;
+export function shouldManageCookie(cookieDomain: string, scope: string): boolean {
+  const sliced = cookieDomain.startsWith(".") ? cookieDomain.slice(1) : cookieDomain;
+
+  if (isGoogleHost(scope)) {
+    // Whole Google family, shared auth cookies included, so account switching works.
+    return sliced === scope || sliced.endsWith(`.${scope}`);
   }
 
-  const isParent = currentDomain.endsWith(`.${sliced}`);
+  const isExact = sliced === scope || sliced === `www.${scope}`;
+  const isSubdomain = sliced.endsWith(`.${scope}`);
+  const isParent = scope.endsWith(`.${sliced}`);
   return isExact || isSubdomain || isParent;
 }
 
@@ -57,12 +32,11 @@ export class CookieHandler {
     try {
       const stores = await chrome.cookies.getAllCookieStores();
       const allCookies: chrome.cookies.Cookie[] = [];
-      const currentDomain = domain.split(":")[0];
+      const scope = getCookieScope(domain);
 
       for (const store of stores) {
         const cookies = await chrome.cookies.getAll({ storeId: store.id });
-        const domainCookies = cookies.filter((cookie) => shouldManageCookie(cookie.domain, cookie.name, currentDomain));
-        allCookies.push(...domainCookies);
+        allCookies.push(...cookies.filter((cookie) => shouldManageCookie(cookie.domain, scope)));
       }
 
       return allCookies;
@@ -72,45 +46,48 @@ export class CookieHandler {
     }
   }
 
-  async clearCookiesForDomain(domain: string): Promise<void> {
-    const cookies = await this.getCookiesForDomain(domain);
-    const currentDomain = domain.split(":")[0];
+  /**
+   * Removes cookies in this domain's scope. When `onlyNames` is given, only
+   * those cookie names are removed - used when switching so a saved session
+   * that predates auth capture cannot wipe the live login.
+   */
+  async clearCookiesForDomain(domain: string, onlyNames?: Set<string>): Promise<void> {
+    const cookies = (await this.getCookiesForDomain(domain)).filter(
+      (cookie) => !onlyNames || onlyNames.has(cookie.name)
+    );
 
-    const clearPromises = cookies.map(async (cookie) => {
-      if (!shouldManageCookie(cookie.domain, cookie.name, currentDomain)) {
-        return;
-      }
-
-      try {
-        await chrome.cookies.remove({
-          url: this.buildCookieUrl(cookie, domain),
-          name: cookie.name,
-          storeId: cookie.storeId,
-        });
-      } catch (error) {
-        console.warn("Failed to remove cookie:", cookie.name, error);
-      }
-    });
-
-    await Promise.all(clearPromises);
+    await Promise.all(
+      cookies.map(async (cookie) => {
+        try {
+          await chrome.cookies.remove({
+            url: this.buildCookieUrl(cookie, domain),
+            name: cookie.name,
+            storeId: cookie.storeId,
+            ...(cookie.partitionKey ? { partitionKey: cookie.partitionKey } : {}),
+          });
+        } catch (error) {
+          console.warn("Failed to remove cookie:", cookie.name, error);
+        }
+      })
+    );
   }
 
   async restoreCookies(cookies: chrome.cookies.Cookie[], domain: string): Promise<void> {
-    const currentDomain = domain.split(":")[0];
+    const scope = getCookieScope(domain);
+    const nowSeconds = Date.now() / 1000;
 
-    const restorePromises = cookies.map(async (cookie) => {
-      if (!shouldManageCookie(cookie.domain, cookie.name, currentDomain)) {
-        return;
-      }
-
-      try {
-        await chrome.cookies.set(this.prepareCookieForRestore(cookie, domain));
-      } catch (error) {
-        console.warn("Failed to restore cookie:", cookie.name, error);
-      }
-    });
-
-    await Promise.all(restorePromises);
+    await Promise.all(
+      cookies
+        .filter((cookie) => shouldManageCookie(cookie.domain, scope))
+        .filter((cookie) => cookie.session || !cookie.expirationDate || cookie.expirationDate > nowSeconds)
+        .map(async (cookie) => {
+          try {
+            await chrome.cookies.set(this.prepareCookieForRestore(cookie, domain));
+          } catch (error) {
+            console.warn("Failed to restore cookie:", cookie.name, error);
+          }
+        })
+    );
   }
 
   private buildCookieUrl(cookie: chrome.cookies.Cookie, fallbackDomain?: string): string {
@@ -144,6 +121,7 @@ export class CookieHandler {
       secure: cookie.secure,
       httpOnly: cookie.httpOnly,
       storeId: cookie.storeId,
+      ...(cookie.partitionKey ? { partitionKey: cookie.partitionKey } : {}),
     };
 
     if (cookie.domain && cookie.domain.startsWith(".")) {

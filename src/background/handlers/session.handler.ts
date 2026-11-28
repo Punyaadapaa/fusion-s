@@ -1,6 +1,6 @@
 import { SessionData, StoredSession } from "@shared/types";
 import { ExtensionError } from "@shared/utils/errorHandling";
-import { CookieHandler } from "./cookie.handler";
+import { CookieHandler, isGoogleHost } from "./cookie.handler";
 import { StorageHandler } from "./storage.handler";
 
 export class SessionHandler {
@@ -42,7 +42,10 @@ export class SessionHandler {
     const { domain, cookies, localStorage, sessionStorage } = sessionData;
 
     try {
-      await this.cookieHandler.clearCookiesForDomain(domain);
+      // Google auth is shared across services; only replace cookies this session
+      // actually has so an old auth-less session cannot wipe the live login.
+      const targetCookieNames = isGoogleHost(domain) ? new Set(cookies.map((cookie) => cookie.name)) : undefined;
+      await this.cookieHandler.clearCookiesForDomain(domain, targetCookieNames);
 
       await Promise.all([
         this.cookieHandler.restoreCookies(cookies, domain),

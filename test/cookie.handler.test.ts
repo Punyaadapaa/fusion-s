@@ -1,4 +1,4 @@
-import { isGoogleHost, shouldManageCookie } from "@background/handlers/cookie.handler";
+import { getCookieScope, isGoogleHost, shouldManageCookie } from "@background/handlers/cookie.handler";
 import { describe, expect, test } from "@jest/globals";
 
 describe("isGoogleHost", () => {
@@ -17,31 +17,37 @@ describe("isGoogleHost", () => {
   });
 });
 
+describe("getCookieScope", () => {
+  test("folds every Google service into one scope", () => {
+    expect(getCookieScope("google.com")).toBe("google.com");
+    expect(getCookieScope("www.google.com")).toBe("google.com");
+    expect(getCookieScope("gemini.google.com")).toBe("google.com");
+    expect(getCookieScope("classroom.google.com")).toBe("google.com");
+    expect(getCookieScope("google.co.id")).toBe("google.co.id");
+  });
+
+  test("keeps other hosts unchanged", () => {
+    expect(getCookieScope("example.com")).toBe("example.com");
+    expect(getCookieScope("sub.example.com")).toBe("sub.example.com");
+  });
+});
+
 describe("shouldManageCookie", () => {
-  test("never touches shared Google auth cookies", () => {
-    expect(shouldManageCookie(".google.com", "SID", "google.com")).toBe(false);
-    expect(shouldManageCookie(".google.com", "__Secure-1PSID", "gemini.google.com")).toBe(false);
-    expect(shouldManageCookie(".google.co.id", "SAPISID", "google.co.id")).toBe(false);
+  test("manages the whole Google family, auth cookies included", () => {
+    expect(shouldManageCookie(".google.com", "google.com")).toBe(true);
+    expect(shouldManageCookie("gemini.google.com", "google.com")).toBe(true);
+    expect(shouldManageCookie("accounts.google.com", "google.com")).toBe(true);
+    expect(shouldManageCookie("mail.google.com", "google.com")).toBe(true);
   });
 
-  test("does not touch the shared parent domain from a Google subdomain", () => {
-    expect(shouldManageCookie(".google.com", "_ga", "gemini.google.com")).toBe(false);
-    expect(shouldManageCookie(".google.com", "_ga", "classroom.google.com")).toBe(false);
-  });
-
-  test("manages only non-auth cookies on the exact Google host", () => {
-    expect(shouldManageCookie("gemini.google.com", "gemini_pref", "gemini.google.com")).toBe(true);
-    expect(shouldManageCookie(".google.com", "_ga", "google.com")).toBe(true);
-  });
-
-  test("does not clear sibling Google services from google.com", () => {
-    expect(shouldManageCookie("mail.google.com", "mail_pref", "google.com")).toBe(false);
+  test("does not mix Google TLDs", () => {
+    expect(shouldManageCookie(".google.co.id", "google.com")).toBe(false);
   });
 
   test("keeps parent/subdomain behaviour for non-Google domains", () => {
-    expect(shouldManageCookie(".example.com", "session", "example.com")).toBe(true);
-    expect(shouldManageCookie("sub.example.com", "session", "example.com")).toBe(true);
-    expect(shouldManageCookie("example.com", "session", "sub.example.com")).toBe(true);
-    expect(shouldManageCookie("other.com", "session", "example.com")).toBe(false);
+    expect(shouldManageCookie(".example.com", "example.com")).toBe(true);
+    expect(shouldManageCookie("sub.example.com", "example.com")).toBe(true);
+    expect(shouldManageCookie("example.com", "sub.example.com")).toBe(true);
+    expect(shouldManageCookie("other.com", "example.com")).toBe(false);
   });
 });
