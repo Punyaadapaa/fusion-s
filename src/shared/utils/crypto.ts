@@ -1,4 +1,4 @@
-import { CryptoKeyPair, EncryptedSession, EncryptionSettings } from "@shared/types/crypto.types";
+import { EncryptionSettings } from "@shared/types/crypto.types";
 
 // Key derivation constants
 const KEY_DERIVATION_ALGORITHM = "PBKDF2";
@@ -81,11 +81,7 @@ export async function encryptSessionData(
 /**
  * Decrypts session data using a derived key
  */
-export async function decryptSessionData(
-  encryptedData: string,
-  iv: string,
-  key: CryptoKey
-): Promise<SessionData> {
+export async function decryptSessionData(encryptedData: string, iv: string, key: CryptoKey): Promise<SessionData> {
   const encryptedBytes: Uint8Array = Uint8Array.from(atob(encryptedData), (c) => c.charCodeAt(0));
   const ivBytes: Uint8Array = Uint8Array.from(atob(iv), (c) => c.charCodeAt(0));
 

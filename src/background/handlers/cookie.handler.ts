@@ -1,3 +1,57 @@
+// Shared Google auth cookies log the user into every Google service at once.
+// Clearing or overwriting them (even from a subdomain session) signs the user
+// out of Gemini, Classroom, YouTube, ... so they are never managed here.
+const GOOGLE_AUTH_COOKIE_NAMES = new Set([
+  "SID",
+  "HSID",
+  "SSID",
+  "APISID",
+  "SAPISID",
+  "LSID",
+  "OSID",
+  "SIDCC",
+  "__Secure-1PSID",
+  "__Secure-3PSID",
+  "__Secure-1PAPISID",
+  "__Secure-3PAPISID",
+  "__Secure-1PSIDTS",
+  "__Secure-3PSIDTS",
+  "__Secure-1PSIDCC",
+  "__Secure-3PSIDCC",
+  "__Host-GAPS",
+  "__Host-1PLSID",
+  "__Host-3PLSID",
+  "__Host-APISID",
+  "__Host-SAPISID",
+  "ACCOUNT_CHOOSER",
+  "AEC",
+  "NID",
+  "1P_JAR",
+  "CONSENT",
+  "SOCS",
+]);
+
+export function isGoogleHost(domain: string): boolean {
+  return /(^|\.)google\.[a-z]{2,}(\.[a-z]{2,})?$/.test(domain);
+}
+
+export function shouldManageCookie(cookieDomain: string, cookieName: string, currentDomain: string): boolean {
+  const sliced = cookieDomain.startsWith(".") ? cookieDomain.slice(1) : cookieDomain;
+  const isExact = sliced === currentDomain || sliced === `www.${currentDomain}`;
+  const isSubdomain = sliced.endsWith(`.${currentDomain}`);
+
+  if (isGoogleHost(currentDomain)) {
+    if (GOOGLE_AUTH_COOKIE_NAMES.has(cookieName)) {
+      return false;
+    }
+    // Only this exact host - never the shared parent (.google.com) or sibling services.
+    return isExact;
+  }
+
+  const isParent = currentDomain.endsWith(`.${sliced}`);
+  return isExact || isSubdomain || isParent;
+}
+
 export class CookieHandler {
   async getCookiesForDomain(domain: string): Promise<chrome.cookies.Cookie[]> {
     try {
@@ -7,30 +61,7 @@ export class CookieHandler {
 
       for (const store of stores) {
         const cookies = await chrome.cookies.getAll({ storeId: store.id });
-        const domainCookies = cookies.filter((cookie) => {
-          const slicedCookieDomain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
-
-          // Exact match or subdomain of current domain
-          const isExactMatch = slicedCookieDomain === currentDomain || slicedCookieDomain === `www.${currentDomain}`;
-
-          // Cookie is for a subdomain of current domain (e.g., cookie for gemini.google.com when on gemini.google.com)
-          const isSubdomainMatch = slicedCookieDomain.endsWith(`.${currentDomain}`);
-
-          // Cookie domain is parent of current domain (e.g., cookie for .google.com when on gemini.google.com)
-          // Only include if it's an exact subdomain match (not a broad parent domain)
-          const isParentMatch = currentDomain.endsWith(`.${slicedCookieDomain}`);
-
-          // For Google domains, be more precise - only capture cookies that exactly match the hostname
-          // or are subdomains, NOT broad parent domain cookies that span across all Google services
-          const isGoogleDomain = currentDomain.endsWith(".google.com") || slicedCookieDomain.endsWith(".google.com");
-
-          if (isGoogleDomain) {
-            // For Google: only capture cookies that exactly match or are subdomains of current hostname
-            return isExactMatch || isSubdomainMatch;
-          }
-
-          return isExactMatch || isSubdomainMatch || isParentMatch;
-        });
+        const domainCookies = cookies.filter((cookie) => shouldManageCookie(cookie.domain, cookie.name, currentDomain));
         allCookies.push(...domainCookies);
       }
 
@@ -43,28 +74,14 @@ export class CookieHandler {
 
   async clearCookiesForDomain(domain: string): Promise<void> {
     const cookies = await this.getCookiesForDomain(domain);
+    const currentDomain = domain.split(":")[0];
 
     const clearPromises = cookies.map(async (cookie) => {
+      if (!shouldManageCookie(cookie.domain, cookie.name, currentDomain)) {
+        return;
+      }
+
       try {
-        // Only clear cookies that are specific to this exact hostname or its subdomains
-        // Don't clear broad parent domain cookies (e.g., .google.com) that affect other services
-        const slicedCookieDomain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
-        const currentDomain = domain.split(":")[0];
-
-        const isExactMatch = slicedCookieDomain === currentDomain || slicedCookieDomain === `www.${currentDomain}`;
-        const isSubdomainMatch = slicedCookieDomain.endsWith(`.${currentDomain}`);
-        const isGoogleDomain = currentDomain.endsWith(".google.com") || slicedCookieDomain.endsWith(".google.com");
-
-        // For Google domains, only clear exact/subdomain matches
-        // For other domains, also clear parent domain matches
-        const shouldClear = isGoogleDomain
-          ? isExactMatch || isSubdomainMatch
-          : isExactMatch || isSubdomainMatch || currentDomain.endsWith(`.${slicedCookieDomain}`);
-
-        if (!shouldClear) {
-          return; // Skip broad parent domain cookies
-        }
-
         await chrome.cookies.remove({
           url: this.buildCookieUrl(cookie, domain),
           name: cookie.name,
@@ -79,28 +96,15 @@ export class CookieHandler {
   }
 
   async restoreCookies(cookies: chrome.cookies.Cookie[], domain: string): Promise<void> {
+    const currentDomain = domain.split(":")[0];
+
     const restorePromises = cookies.map(async (cookie) => {
+      if (!shouldManageCookie(cookie.domain, cookie.name, currentDomain)) {
+        return;
+      }
+
       try {
-        // Only restore cookies that were specifically captured for this domain
-        // Skip broad parent domain cookies that shouldn't be overwritten
-        const slicedCookieDomain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
-        const currentDomain = domain.split(":")[0];
-
-        const isExactMatch = slicedCookieDomain === currentDomain || slicedCookieDomain === `www.${currentDomain}`;
-        const isSubdomainMatch = slicedCookieDomain.endsWith(`.${currentDomain}`);
-        const isGoogleDomain = currentDomain.endsWith(".google.com") || slicedCookieDomain.endsWith(".google.com");
-
-        const shouldRestore = isGoogleDomain
-          ? isExactMatch || isSubdomainMatch
-          : isExactMatch || isSubdomainMatch || currentDomain.endsWith(`.${slicedCookieDomain}`);
-
-        if (!shouldRestore) {
-          return; // Skip broad parent domain cookies
-        }
-
-        const cookieDetails = this.prepareCookieForRestore(cookie, domain);
-
-        await chrome.cookies.set(cookieDetails);
+        await chrome.cookies.set(this.prepareCookieForRestore(cookie, domain));
       } catch (error) {
         console.warn("Failed to restore cookie:", cookie.name, error);
       }

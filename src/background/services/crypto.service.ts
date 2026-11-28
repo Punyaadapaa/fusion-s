@@ -1,9 +1,14 @@
 import { ChromeApiService } from "@popup/services/chromeApi.service";
 import { STORAGE_KEYS } from "@shared/constants/storageKeys";
-import { CryptoKeyPair, EncryptedSession, EncryptionSettings } from "@shared/types/crypto.types";
+import { EncryptionSettings } from "@shared/types/crypto.types";
 import { SessionData, EncryptedSessionData } from "@shared/types/session.types";
 import { ExtensionStorage } from "@shared/types/storage.types";
-import { deriveKeyFromPassword, encryptSessionData, decryptSessionData, defaultEncryptionSettings } from "@shared/utils/crypto";
+import {
+  deriveKeyFromPassword,
+  encryptSessionData,
+  decryptSessionData,
+  defaultEncryptionSettings,
+} from "@shared/utils/crypto";
 import { ExtensionError } from "@shared/utils/errorHandling";
 
 export class CryptoService {
@@ -13,9 +18,7 @@ export class CryptoService {
 
   async initialize(): Promise<void> {
     try {
-      const result = await this.chromeApi.getStorageData<ExtensionStorage>([
-        STORAGE_KEYS.ENCRYPTION_SETTINGS,
-      ]);
+      const result = await this.chromeApi.getStorageData<ExtensionStorage>([STORAGE_KEYS.ENCRYPTION_SETTINGS]);
 
       this.encryptionSettings = result[STORAGE_KEYS.ENCRYPTION_SETTINGS] || defaultEncryptionSettings;
     } catch (error) {
@@ -27,29 +30,23 @@ export class CryptoService {
   async unlock(password: string): Promise<void> {
     try {
       // Get salt from storage or generate new one if not exists
-      const storage = await this.chromeApi.getStorageData<Record<string, string>>([
-        "encryptionSalt",
-      ]);
+      const storage = await this.chromeApi.getStorageData<Record<string, string>>(["encryptionSalt"]);
 
       let salt: Uint8Array;
       if (storage.encryptionSalt) {
         // Decode base64 salt
-        const saltBytes = Uint8Array.from(atob(storage.encryptionSalt), c => c.charCodeAt(0));
+        const saltBytes = Uint8Array.from(atob(storage.encryptionSalt), (c) => c.charCodeAt(0));
         salt = saltBytes;
       } else {
         // Generate new salt
         salt = crypto.getRandomValues(new Uint8Array(16));
         await this.chromeApi.setStorageData({
-          encryptionSalt: btoa(String.fromCharCode(...salt))
+          encryptionSalt: btoa(String.fromCharCode(...salt)),
         });
       }
 
       // Derive key from password
-      this.derivedKey = await deriveKeyFromPassword(
-        password,
-        salt,
-        this.encryptionSettings.keyDerivationIterations
-      );
+      this.derivedKey = await deriveKeyFromPassword(password, salt, this.encryptionSettings.keyDerivationIterations);
     } catch (error) {
       throw new ExtensionError(`Failed to unlock: ${error}`);
     }
@@ -99,11 +96,7 @@ export class CryptoService {
       return encryptedSession as SessionData;
     }
 
-    const decrypted = await decryptSessionData(
-      encryptedSession.encryptedData,
-      encryptedSession.iv,
-      this.derivedKey
-    );
+    const decrypted = await decryptSessionData(encryptedSession.encryptedData, encryptedSession.iv, this.derivedKey);
 
     return {
       ...decrypted,
@@ -119,7 +112,7 @@ export class CryptoService {
       throw new ExtensionError("Encryption not unlocked");
     }
 
-    return await Promise.all(sessions.map(session => this.encryptSession(session)));
+    return await Promise.all(sessions.map((session) => this.encryptSession(session)));
   }
 
   async decryptSessions(encryptedSessions: EncryptedSessionData[]): Promise<SessionData[]> {
@@ -127,7 +120,7 @@ export class CryptoService {
       throw new ExtensionError("Encryption not unlocked");
     }
 
-    return await Promise.all(encryptedSessions.map(session => this.decryptSession(session)));
+    return await Promise.all(encryptedSessions.map((session) => this.decryptSession(session)));
   }
 
   async setEncryptionSettings(settings: EncryptionSettings): Promise<void> {
@@ -143,9 +136,7 @@ export class CryptoService {
 
   async getEncryptionSettings(): Promise<EncryptionSettings> {
     try {
-      const result = await this.chromeApi.getStorageData<ExtensionStorage>([
-        STORAGE_KEYS.ENCRYPTION_SETTINGS,
-      ]);
+      const result = await this.chromeApi.getStorageData<ExtensionStorage>([STORAGE_KEYS.ENCRYPTION_SETTINGS]);
       return result[STORAGE_KEYS.ENCRYPTION_SETTINGS] || defaultEncryptionSettings;
     } catch (error) {
       console.error("Error getting encryption settings:", error);
